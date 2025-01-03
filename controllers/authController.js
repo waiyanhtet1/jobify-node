@@ -1,4 +1,6 @@
+import { UnauthenticatedError } from "../errors/customErrors.js";
 import User from "../models/userModel.js";
+import { comparePassword, hashedPassword } from "../utils/passwordUtils.js";
 
 export const register = async (req, res) => {
   // creating fist user account is admin level because due to this project requirement there is only one admin user
@@ -6,10 +8,18 @@ export const register = async (req, res) => {
   const isFirstAccount = (await User.countDocuments()) === 0;
   req.body.role = isFirstAccount ? "admin" : "user";
 
-  const newUser = await User.create(req.body);
-  res.send({ message: "success!", newUser });
+  req.body.password = await hashedPassword(req.body.password);
+
+  await User.create(req.body);
+  res.status(201).send({ message: "success!" });
 };
 
-export const login = (req, res) => {
-  res.send("login");
+export const login = async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) throw new UnauthenticatedError("No User found with this email!");
+
+  const isPassCorrect = await comparePassword(req.body.password, user.password);
+  if (!isPassCorrect) throw new UnauthenticatedError("Wrong Password");
+
+  res.status(200).json({ message: "Login Success!" });
 };
