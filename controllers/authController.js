@@ -1,5 +1,6 @@
 import { UnauthenticatedError } from "../errors/customErrors.js";
 import User from "../models/userModel.js";
+import { createJWT } from "../utils/jwtUtils.js";
 import { comparePassword, hashedPassword } from "../utils/passwordUtils.js";
 
 export const register = async (req, res) => {
@@ -21,5 +22,13 @@ export const login = async (req, res) => {
   const isPassCorrect = await comparePassword(req.body.password, user.password);
   if (!isPassCorrect) throw new UnauthenticatedError("Wrong Password");
 
-  res.status(200).json({ message: "Login Success!" });
+  const token = createJWT({ userId: user._id, role: user.role });
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  res.status(200).json({ message: "Login Success!", token });
 };
